@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useTools } from "../context/ToolContext";
 
 function ToolsPanel({ onLog }) {
-  const [tools, setTools] = useState([]);
+  const { toolsPanelTools, addTool, updateTool, removeTool } = useTools();
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [showTestModal, setShowTestModal] = useState(false);
@@ -53,7 +54,7 @@ function ToolsPanel({ onLog }) {
       return;
     }
 
-    const newTool = {
+    const toolData = {
       id: editingId || Date.now(),
       ...formData,
       active: true,
@@ -61,10 +62,10 @@ function ToolsPanel({ onLog }) {
     };
 
     if (editingId) {
-      setTools(prev => prev.map(t => t.id === editingId ? newTool : t));
+      updateTool(editingId, toolData);
       onLog?.("info", "TOOLS", `Tool "${formData.name}" updated`);
     } else {
-      setTools(prev => [...prev, newTool]);
+      addTool(toolData);
       onLog?.("info", "TOOLS", `Tool "${formData.name}" saved`);
     }
 
@@ -73,16 +74,13 @@ function ToolsPanel({ onLog }) {
 
   const handleDeleteTool = (id, name) => {
     if (window.confirm(`Are you sure you want to delete the tool "${name}"?`)) {
-      setTools(prev => prev.filter(t => t.id !== id));
+      removeTool(id);
       onLog?.("info", "TOOLS", `Tool "${name}" deleted`);
     }
   };
 
   const handleToggleActive = (id) => {
-    setTools(prev => prev.map(t =>
-      t.id === id ? { ...t, active: !t.active } : t
-    ));
-    const tool = tools.find(t => t.id === id);
+    const tool = toolsPanelTools.find(t => t.id === id);
     onLog?.("info", "TOOLS", `Tool "${tool?.name}" ${!tool?.active ? 'activated' : 'deactivated'}`);
   };
 
@@ -351,7 +349,7 @@ function ToolsPanel({ onLog }) {
 
       {/* Tools List */}
       <div className="tools-list">
-        {tools.length === 0 ? (
+        {toolsPanelTools.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">🔧</div>
             <div className="empty-title">No tools defined</div>
@@ -360,7 +358,7 @@ function ToolsPanel({ onLog }) {
             </div>
           </div>
         ) : (
-          tools.map(tool => (
+          toolsPanelTools.map(tool => (
             <div key={tool.id} className="tool-card">
               <div className="tool-header">
                 <div className="tool-title">

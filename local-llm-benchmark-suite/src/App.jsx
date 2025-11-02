@@ -4,9 +4,12 @@ import AgenticPanel from "./components/AgenticPanel";
 import RAGPanel from "./components/RAGPanel";
 import ToolsPanel from "./components/ToolsPanel";
 import MCPPanel from "./components/MCPPanel";
+import BenchmarkDashboard from "./panels/BenchmarkDashboard";
 import ResourceMonitor from "./panels/ResourceMonitor";
 import LogsPanel from "./panels/LogsPanel";
 import { logger } from "./utils/logger";
+import { ToolProvider } from "./context/ToolContext";
+import { MemoryProvider } from "./context/MemoryContext";
 
 function App() {
   const [activeTab, setActiveTab] = useState("chat");
@@ -59,6 +62,7 @@ function App() {
     { id: "rag", label: "RAG", component: RAGPanel },
     { id: "tools", label: "Tools", component: ToolsPanel },
     { id: "mcp", label: "MCP", component: MCPPanel },
+    { id: "benchmark", label: "Benchmark", component: BenchmarkDashboard },
   ];
 
   const ActiveComponent = tabs.find(tab => tab.id === activeTab)?.component || ChatPanel;
@@ -88,45 +92,49 @@ function App() {
   const getCurrentComponent = () => {
     const TabComponent = ActiveComponent;
     // Pass logEvent to components that need it
-    if (activeTab === "chat" || activeTab === "tools" || activeTab === "mcp") {
+    if (activeTab === "chat" || activeTab === "tools" || activeTab === "mcp" || activeTab === "rag" || activeTab === "benchmark") {
       return <TabComponent onLog={logEvent} />;
     }
     return <TabComponent />;
   };
 
   return (
-    <div className="app-container">
-      {/* Left Panel - Core Application */}
-      <div className="panel">
-        {/* Tab Navigation */}
-        <div className="tab-navigation">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => handleTabChange(tab.id)}
-            >
-              {tab.label}
-            </button>
-          ))}
+    <MemoryProvider>
+      <ToolProvider>
+        <div className="app-container">
+        {/* Left Panel - Core Application */}
+        <div className="panel">
+          {/* Tab Navigation */}
+          <div className="tab-navigation">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
+                onClick={() => handleTabChange(tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab Content */}
+          <div style={{ flex: 1, overflow: "auto", backgroundColor: "var(--bg)" }}>
+            {getCurrentComponent()}
+          </div>
         </div>
 
-        {/* Tab Content */}
-        <div style={{ flex: 1, overflow: "auto", backgroundColor: "var(--bg)" }}>
-          {getCurrentComponent()}
+        {/* Center Panel - Resource Monitoring */}
+        <div className="panel">
+          <ResourceMonitor onLog={logEvent} />
         </div>
-      </div>
 
-      {/* Center Panel - Resource Monitoring */}
-      <div className="panel">
-        <ResourceMonitor onLog={logEvent} />
-      </div>
-
-      {/* Right Panel - Logs */}
-      <div className="panel">
-        <LogsPanel logs={logs} onLogEvent={logEvent} />
-      </div>
-    </div>
+        {/* Right Panel - Logs */}
+        <div className="panel">
+          <LogsPanel logs={logs} onLogEvent={logEvent} />
+        </div>
+        </div>
+      </ToolProvider>
+    </MemoryProvider>
   );
 }
 

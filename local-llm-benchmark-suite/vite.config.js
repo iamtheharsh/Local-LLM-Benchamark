@@ -11,5 +11,17 @@ export default defineConfig(() => {
         overlay: false
       }
     },
+    build: {
+      rollupOptions: {
+        external: ['@tauri-apps/api/tauri', '@tauri-apps/api'],
+        onwarn(warning, warn) {
+          // Suppress eval warnings from ResourceMonitor.jsx
+          if (warning.code === 'EVAL' && warning.message.includes('ResourceMonitor.jsx')) {
+            return;
+          }
+          warn(warning);
+        }
+      }
+    }
   };
 });

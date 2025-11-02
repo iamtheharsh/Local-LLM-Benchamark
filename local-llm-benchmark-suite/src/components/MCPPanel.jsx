@@ -1,7 +1,8 @@
 import React, { useState } from "react";
+import { useTools } from "../context/ToolContext";
 
 function MCPPanel({ onLog }) {
-  const [servers, setServers] = useState([]);
+  const { mcpServers, setMcpServers } = useTools();
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [testingServer, setTestingServer] = useState(null);
@@ -47,10 +48,10 @@ function MCPPanel({ onLog }) {
     };
 
     if (editingId) {
-      setServers(prev => prev.map(s => s.id === editingId ? newServer : s));
+      setMcpServers(prev => prev.map(s => s.id === editingId ? newServer : s));
       onLog?.("info", "MCP", `Server "${formData.name}" updated`);
     } else {
-      setServers(prev => [...prev, newServer]);
+      setMcpServers(prev => [...prev, newServer]);
       onLog?.("info", "MCP", `Server "${formData.name}" saved`);
     }
 
@@ -59,7 +60,7 @@ function MCPPanel({ onLog }) {
 
   const handleDeleteServer = (id, name) => {
     if (window.confirm(`Are you sure you want to delete the server "${name}"?`)) {
-      setServers(prev => prev.filter(s => s.id !== id));
+      setMcpServers(prev => prev.filter(s => s.id !== id));
       onLog?.("info", "MCP", `Server "${name}" deleted`);
     }
   };
@@ -84,7 +85,7 @@ function MCPPanel({ onLog }) {
         { name: "weather", description: "Get current weather data" }
       ].slice(0, Math.floor(Math.random() * 4) + 1);
 
-      setServers(prev => prev.map(s =>
+      setMcpServers(prev => prev.map(s =>
         s.id === server.id
           ? { ...s, connected: true, latency, tools: mockTools }
           : s
@@ -93,7 +94,7 @@ function MCPPanel({ onLog }) {
       onLog?.("info", "MCP", `Connection successful (${latency}ms)`);
       onLog?.("debug", "MCP", `${mockTools.length} tools discovered: ${mockTools.map(t => t.name).join(', ')}`);
     } catch (error) {
-      setServers(prev => prev.map(s =>
+      setMcpServers(prev => prev.map(s =>
         s.id === server.id
           ? { ...s, connected: false, latency: null }
           : s
@@ -106,7 +107,7 @@ function MCPPanel({ onLog }) {
   };
 
   const handleDisconnectServer = (server) => {
-    setServers(prev => prev.map(s =>
+    setMcpServers(prev => prev.map(s =>
       s.id === server.id
         ? { ...s, connected: false, latency: null }
         : s
@@ -143,7 +144,7 @@ function MCPPanel({ onLog }) {
     );
   };
 
-  const sortedServers = [...servers].sort((a, b) => {
+  const sortedServers = [...mcpServers].sort((a, b) => {
     if (a.connected && !b.connected) return -1;
     if (!a.connected && b.connected) return 1;
     return a.name.localeCompare(b.name);
@@ -219,7 +220,7 @@ function MCPPanel({ onLog }) {
 
       {/* Servers List */}
       <div className="servers-list">
-        {servers.length === 0 ? (
+        {mcpServers.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">🔌</div>
             <div className="empty-title">No MCP servers configured</div>
@@ -765,16 +766,5 @@ function MCPPanel({ onLog }) {
     </div>
   );
 }
-
-// Future integration hook for agentic LLM execution pipeline
-export const useMCPServers = () => {
-  // This hook will be used in future phases to connect MCP tools to the Chat tab
-  return {
-    // servers: [],
-    // connectServer: (serverId) => {},
-    // testTool: (serverId, toolName) => {},
-    // getTools: () => []
-  };
-};
 
 export default MCPPanel;

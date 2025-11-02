@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { benchmarkManager } from "../agent/BenchmarkManager";
 
 function ResourceMonitor({ onLog }) {
   const [metrics, setMetrics] = useState({
@@ -18,50 +19,35 @@ function ResourceMonitor({ onLog }) {
 
   const fetchMetrics = async () => {
     try {
-      // Check if we're running in a Tauri context
-      const isTauri = typeof window !== 'undefined' && window.__TAURI__ !== undefined;
-
       let newMetrics;
-      let useSimulation = false;
+      let useSimulation = true; // Default to simulation mode
 
-      if (isTauri) {
+      // Only try Tauri in a real Tauri environment
+      if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI_VERSION__) {
         try {
-          // Wrap entire Tauri code in eval() to completely hide from Vite
-          const tauriResult = await eval(`
+          // Use eval to completely hide from Vite bundler
+          const backendMetrics = await eval(`
             (async () => {
-              try {
-                const tauriModule = await import('@tauri-apps/api/tauri');
-                const backendMetrics = await tauriModule.invoke('get_system_metrics');
-                return {
-                  success: true,
-                  data: {
-                    memory_used: backendMetrics.memory_used,
-                    memory_total: backendMetrics.memory_total,
-                    memory_percentage: backendMetrics.memory_percentage,
-                    cpu_usage: backendMetrics.cpu_usage,
-                    cpu_count: backendMetrics.cpu_count,
-                    battery_level: backendMetrics.battery_level,
-                    battery_time_remaining: backendMetrics.battery_time_remaining,
-                    battery_state: backendMetrics.battery_state
-                  }
-                };
-              } catch (error) {
-                return { success: false, error: error.message };
-              }
+              const { invoke } = await import('@tauri-apps/api/tauri');
+              return await invoke('get_system_metrics');
             })()
           `);
 
-          if (tauriResult.success) {
-            newMetrics = tauriResult.data;
-          } else {
-            throw new Error(tauriResult.error || 'Tauri backend error');
-          }
+          newMetrics = {
+            memory_used: backendMetrics.memory_used,
+            memory_total: backendMetrics.memory_total,
+            memory_percentage: backendMetrics.memory_percentage,
+            cpu_usage: backendMetrics.cpu_usage,
+            cpu_count: backendMetrics.cpu_count,
+            battery_level: backendMetrics.battery_level,
+            battery_time_remaining: backendMetrics.battery_time_remaining,
+            battery_state: backendMetrics.battery_state
+          };
+          useSimulation = false;
         } catch (tauriError) {
           console.warn('Tauri backend not available, using simulated metrics:', tauriError);
           useSimulation = true;
         }
-      } else {
-        useSimulation = true;
       }
 
       if (useSimulation) {
@@ -87,6 +73,22 @@ function ResourceMonitor({ onLog }) {
 
       setMetrics(newMetrics);
       setError(null);
+
+      // Log benchmark metrics for system resources
+      benchmarkManager.logMetric('SYSTEM', 'cpu_usage', newMetrics.cpu_usage, {
+        cpu_count: newMetrics.cpu_count
+      });
+
+      benchmarkManager.logMetric('SYSTEM', 'memory_usage', newMetrics.memory_used, {
+        memory_total: newMetrics.memory_total,
+        memory_percentage: newMetrics.memory_percentage
+      });
+
+      if (newMetrics.battery_level !== null) {
+        benchmarkManager.logMetric('SYSTEM', 'battery_level', newMetrics.battery_level, {
+          battery_state: newMetrics.battery_state
+        });
+      }
 
       // Check for threshold warnings
       if (newMetrics.memory_percentage > 85 && previousMetrics.current.memory_percentage <= 85) {
@@ -263,7 +265,7 @@ function ResourceMonitor({ onLog }) {
         fontSize: '13px'
       }}>
         {isPolling
-          ? `💡 Live metrics updating every 1 second (${window.__TAURI__ ? 'REAL DATA via Rust backend' : 'SIMULATED - web mode'})`
+          ? `💡 Live metrics updating every 1 second (${typeof window !== 'undefined' && window.__TAURI__ ? 'REAL DATA via Rust backend' : 'SIMULATED - web mode'})`
           : '⏸️ Monitoring paused'}
       </div>
 
