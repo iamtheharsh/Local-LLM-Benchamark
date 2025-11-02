@@ -88,7 +88,7 @@ function App() {
   const getCurrentComponent = () => {
     const TabComponent = ActiveComponent;
     // Pass logEvent to components that need it
-    if (activeTab === "chat" || activeTab === "tools") {
+    if (activeTab === "chat" || activeTab === "tools" || activeTab === "mcp") {
       return <TabComponent onLog={logEvent} />;
     }
     return <TabComponent />;
